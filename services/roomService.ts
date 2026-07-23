@@ -8,8 +8,6 @@ export interface RoomData {
   tenantName?: string;
 }
 
-
-
 // ฟังก์ชันดึงข้อมูลจาก Supabase
 export async function getRooms(): Promise<RoomData[]> {
   const { data, error } = await supabase.from('rooms').select('*');
@@ -17,7 +15,6 @@ export async function getRooms(): Promise<RoomData[]> {
     console.error('Error fetching rooms:', error);
     return [];
   }
-  // แปลงชื่อคอลัมน์จากฐานข้อมูลให้ตรงกับหน้าเว็บ
   return (data || []).map((item: any) => ({
     id: item.id.toString(),
     roomNumber: item.room_number,
@@ -27,9 +24,10 @@ export async function getRooms(): Promise<RoomData[]> {
   }));
 }
 
+// ฟังก์ชันบันทึกข้อมูลลง Supabase
 export async function saveRooms(rooms: RoomData[]) {
-  // ลบข้อมูลทั้งหมดในตารางทิ้งก่อน แล้วค่อยเพิ่มชุดใหม่เข้าไปทั้งหมดทีเดียว เพื่อให้ข้อมูลตรงกันเป๊ะ
-  await supabase.from('rooms').delete().neq('id', '0'); // ลบข้อมูลทั้งหมด
+  // ลบข้อมูลทั้งหมดแล้วใส่ชุดใหม่เข้าไป เพื่อให้ข้อมูลตรงกันเป๊ะ
+  await supabase.from('rooms').delete().neq('id', '0');
 
   const formattedRooms = rooms.map(room => ({
     id: room.id,
