@@ -1,139 +1,94 @@
 'use client';
 
-import React, { useState } from 'react';
-import  Sidebar  from '@/components/Sidebar';
-import { mockRooms, Room } from '@/services/roomService';
-import { RoomModal } from '@/components/RoomModal';
+import React, { useState, useEffect } from 'react';
+import Sidebar from '@/components/Sidebar';
+import { getRooms, saveRooms, RoomData } from '@/services/storage';
 
 export default function RoomsPage() {
-  const [rooms, setRooms] = useState<Room[]>(mockRooms);
-  const [search, setSearch] = useState('');
-  const [buildingFilter, setBuildingFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [rooms, setRooms] = useState<RoomData[]>([]);
+  const [roomNumber, setRoomNumber] = useState('');
+  const [rentPrice, setRentPrice] = useState(3500);
+  const [status, setStatus] = useState<'vacant' | 'occupied' | 'maintenance'>('vacant');
 
-  const filteredRooms = rooms.filter((room) => {
-    const matchSearch = room.roomNumber.toLowerCase().includes(search.toLowerCase());
-    const matchBuilding = buildingFilter === 'ALL' || room.building === buildingFilter;
-    const matchStatus = statusFilter === 'ALL' || room.status === statusFilter;
-    return matchSearch && matchBuilding && matchStatus;
-  });
+  useEffect(() => {
+    setRooms(getRooms());
+  }, []);
 
-  const handleSaveRoom = (savedRoom: Room) => {
-    if (editingRoom) {
-      setRooms(rooms.map((r) => (r.id === savedRoom.id ? savedRoom : r)));
-    } else {
-      setRooms([...rooms, savedRoom]);
-    }
-  };
+  const handleAddRoom = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roomNumber) return alert('กรุณากรอกเลขห้อง');
 
-  const handleEdit = (room: Room) => {
-    setEditingRoom(room);
-    setIsModalOpen(true);
+    const newRoom: RoomData = {
+      id: Date.now().toString(),
+      roomNumber,
+      rentPrice,
+      status,
+    };
+
+    const updated = [...rooms, newRoom];
+    setRooms(updated);
+    saveRooms(updated);
+    setRoomNumber('');
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('คุณต้องการลบห้องพักนี้ใช่หรือไม่?')) {
-      setRooms(rooms.filter((r) => r.id !== id));
+    if (confirm('คุณต้องการลบห้องนี้ใช่ไหม?')) {
+      const updated = rooms.filter(r => r.id !== id);
+      setRooms(updated);
+      saveRooms(updated);
     }
   };
 
-  const renderBadge = (status: string) => {
-    if (status === 'VACANT') return <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ห้องว่าง</span>;
-    if (status === 'OCCUPIED') return <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">มีผู้เช่า</span>;
-    return <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">ปิดปรับปรุง</span>;
-  };
-
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex">
+    <div className="flex min-h-screen bg-slate-950 text-white">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-20">
-          <h2 className="text-base font-semibold text-slate-200">จัดการห้องพัก</h2>
-          <button
-            onClick={() => {
-              setEditingRoom(null);
-              setIsModalOpen(true);
-            }}
-            className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-md shadow-blue-600/20"
-          >
-            ＋ เพิ่มห้องพัก
-          </button>
-        </header>
+      <main className="flex-1 p-8 max-w-6xl">
+        <h1 className="text-2xl font-bold mb-6">จัดการห้องพัก (Rooms)</h1>
 
-        <main className="p-6 space-y-4">
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-wrap gap-3 items-center">
-            <input
-              type="text"
-              placeholder="ค้นหาเลขห้อง..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full sm:w-48"
-            />
-            <select
-              value={buildingFilter}
-              onChange={(e) => setBuildingFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-300 focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">ทุกอาคาร</option>
-              <option value="อาคาร A">อาคาร A</option>
-              <option value="อาคาร B">อาคาร B</option>
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-300 focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">ทุกสถานะ</option>
-              <option value="VACANT">ห้องว่าง</option>
-              <option value="OCCUPIED">มีผู้เช่า</option>
-              <option value="MAINTENANCE">ปิดปรับปรุง</option>
-            </select>
+        {/* ฟอร์มเพิ่มห้อง */}
+        <form onSubmit={handleAddRoom} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-8">
+          <h2 className="text-lg font-semibold mb-4">➕ เพิ่มห้องพักใหม่</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">หมายเลขห้อง</label>
+              <input type="text" value={roomNumber} onChange={e => setRoomNumber(e.target.value)} placeholder="เช่น 101" className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">ค่าเช่า (บาท/เดือน)</label>
+              <input type="number" value={rentPrice} onChange={e => setRentPrice(Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">สถานะห้อง</label>
+              <select value={status} onChange={e => setStatus(e.target.value as any)} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm">
+                <option value="vacant">🟢 ห้องว่าง</option>
+                <option value="occupied">🔴 มีผู้เช่าแล้ว</option>
+                <option value="maintenance">🟡 ปรับปรุง</option>
+              </select>
+            </div>
           </div>
+          <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm px-6 py-2 rounded-xl">บันทึกห้องพัก</button>
+        </form>
 
-          <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/80 text-slate-400 uppercase border-b border-slate-800">
-                <tr>
-                  <th className="px-5 py-3.5">เลขห้อง</th>
-                  <th className="px-5 py-3.5">อาคาร</th>
-                  <th className="px-5 py-3.5">ชั้น</th>
-                  <th className="px-5 py-3.5">ค่าเช่า/เดือน</th>
-                  <th className="px-5 py-3.5">สถานะ</th>
-                  <th className="px-5 py-3.5 text-right">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {filteredRooms.map((room) => (
-                  <tr key={room.id} className="hover:bg-slate-800/40">
-                    <td className="px-5 py-3.5 font-bold text-slate-100">{room.roomNumber}</td>
-                    <td className="px-5 py-3.5">{room.building}</td>
-                    <td className="px-5 py-3.5 text-slate-400">ชั้น {room.floor}</td>
-                    <td className="px-5 py-3.5 font-semibold text-slate-200">฿{room.price.toLocaleString()}</td>
-                    <td className="px-5 py-3.5">{renderBadge(room.status)}</td>
-                    <td className="px-5 py-3.5 text-right space-x-2">
-                      <button onClick={() => handleEdit(room)} className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px]">
-                        แก้ไข
-                      </button>
-                      <button onClick={() => handleDelete(room.id)} className="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[11px]">
-                        ลบ
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </main>
-      </div>
-
-      <RoomModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveRoom}
-        initialData={editingRoom}
-      />
+        {/* รายการห้องพัก */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {rooms.map(room => (
+            <div key={room.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex justify-between items-center">
+              <div>
+                <span className="text-xl font-bold">ห้อง {room.roomNumber}</span>
+                <p className="text-xs text-slate-400">฿{room.rentPrice.toLocaleString()} / เดือน</p>
+                <span className={`inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                  room.status === 'vacant' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                  room.status === 'occupied' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
+                  'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                }`}>
+                  {room.status === 'vacant' ? 'ห้องว่าง' : room.status === 'occupied' ? `มีผู้เช่า (${room.tenantName || '-'})` : 'ปรับปรุง'}
+                </span>
+              </div>
+              <button onClick={() => handleDelete(room.id)} className="text-xs text-slate-500 hover:text-rose-400 p-2">🗑️</button>
+            </div>
+          ))}
+        </div>
+      </main>
     </div>
   );
 }

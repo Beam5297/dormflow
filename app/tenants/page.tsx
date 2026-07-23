@@ -1,148 +1,109 @@
 'use client';
 
-import React, { useState } from 'react';
-import  Sidebar  from '@/components/Sidebar';
-import { mockTenants, Tenant } from '@/services/tenantService';
-import { TenantModal } from '@/components/TenantModal';
+import React, { useState, useEffect } from 'react';
+import Sidebar from '@/components/Sidebar';
+import { getTenants, saveTenants, getRooms, saveRooms, TenantData } from '@/services/storage';
 
 export default function TenantsPage() {
-  const [tenants, setTenants] = useState<Tenant[]>(mockTenants);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [tenants, setTenants] = useState<TenantData[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
 
-  const filteredTenants = tenants.filter((tenant) => {
-    const matchSearch =
-      tenant.name.toLowerCase().includes(search.toLowerCase()) ||
-      tenant.roomNumber.toLowerCase().includes(search.toLowerCase()) ||
-      tenant.phone.includes(search);
-    const matchStatus = statusFilter === 'ALL' || tenant.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [roomNumber, setRoomNumber] = useState('');
+  const [startDate, setStartDate] = useState('');
 
-  const handleSaveTenant = (savedTenant: Tenant) => {
-    if (editingTenant) {
-      setTenants(tenants.map((t) => (t.id === savedTenant.id ? savedTenant : t)));
-    } else {
-      setTenants([...tenants, savedTenant]);
-    }
-  };
+  useEffect(() => {
+    setTenants(getTenants());
+    setRooms(getRooms());
+  }, []);
 
-  const handleEdit = (tenant: Tenant) => {
-    setEditingTenant(tenant);
-    setIsModalOpen(true);
-  };
+  const handleAddTenant = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !roomNumber) return alert('กรุณากรอกชื่อและเลือกห้องพัก');
 
-  const handleDelete = (id: string) => {
-    if (confirm('คุณต้องการลบข้อมูลผู้เช่ารายนี้ใช่หรือไม่?')) {
-      setTenants(tenants.filter((t) => t.id !== id));
-    }
-  };
+    const newTenant: TenantData = {
+      id: Date.now().toString(),
+      name,
+      phone,
+      roomNumber,
+      startDate: startDate || new Date().toISOString().split('T')[0],
+    };
 
-  const renderBadge = (status: string) => {
-    if (status === 'ACTIVE')
-      return <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ปกติ</span>;
-    if (status === 'EXPIRED')
-      return <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">ใกล้/หมดสัญญา</span>;
-    return <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20">ย้ายออก</span>;
+    const updatedTenants = [...tenants, newTenant];
+    setTenants(updatedTenants);
+    saveTenants(updatedTenants);
+
+    // อัปเดตสถานะห้องใน Rooms เป็น occupied
+    const updatedRooms = rooms.map(r => r.roomNumber === roomNumber ? { ...r, status: 'occupied' as const, tenantName: name } : r);
+    setRooms(updatedRooms);
+    saveRooms(updatedRooms);
+
+    setName('');
+    setPhone('');
+    setRoomNumber('');
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex">
+    <div className="flex min-h-screen bg-slate-950 text-white">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-20">
-          <h2 className="text-base font-semibold text-slate-200">ผู้เช่า & สัญญา</h2>
-          <button
-            onClick={() => {
-              setEditingTenant(null);
-              setIsModalOpen(true);
-            }}
-            className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-md shadow-blue-600/20"
-          >
-            ＋ เพิ่มผู้เช่าใหม่
-          </button>
-        </header>
+      <main className="flex-1 p-8 max-w-6xl">
+        <h1 className="text-2xl font-bold mb-6">จัดการผู้เช่า (Tenants)</h1>
 
-        <main className="p-6 space-y-4">
-          {/* Controls Bar */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-wrap gap-3 items-center">
-            <input
-              type="text"
-              placeholder="ค้นหาชื่อ, ห้อง, เบอร์โทร..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full sm:w-60"
-            />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-300 focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">ทุกสถานะสัญญา</option>
-              <option value="ACTIVE">ปกติ</option>
-              <option value="EXPIRED">ใกล้/หมดสัญญา</option>
-              <option value="MOVED_OUT">ย้ายออกแล้ว</option>
-            </select>
-          </div>
-
-          {/* Table */}
-          <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/80 text-slate-400 uppercase border-b border-slate-800">
-                <tr>
-                  <th className="px-5 py-3.5">ผู้เช่า</th>
-                  <th className="px-5 py-3.5">ห้อง</th>
-                  <th className="px-5 py-3.5">เบอร์โทรศัพท์</th>
-                  <th className="px-5 py-3.5">ระยะเวลาสัญญา</th>
-                  <th className="px-5 py-3.5">เงินประกัน</th>
-                  <th className="px-5 py-3.5">สถานะ</th>
-                  <th className="px-5 py-3.5 text-right">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {filteredTenants.map((tenant) => (
-                  <tr key={tenant.id} className="hover:bg-slate-800/40">
-                    <td className="px-5 py-3.5">
-                      <p className="font-bold text-slate-100">{tenant.name}</p>
-                      <p className="text-[10px] text-slate-500">{tenant.idCard}</p>
-                    </td>
-                    <td className="px-5 py-3.5 font-semibold text-blue-400">ห้อง {tenant.roomNumber}</td>
-                    <td className="px-5 py-3.5 text-slate-300">{tenant.phone}</td>
-                    <td className="px-5 py-3.5 text-slate-400">
-                      {tenant.startDate} ถึง {tenant.endDate}
-                    </td>
-                    <td className="px-5 py-3.5 font-medium text-slate-200">฿{tenant.deposit.toLocaleString()}</td>
-                    <td className="px-5 py-3.5">{renderBadge(tenant.status)}</td>
-                    <td className="px-5 py-3.5 text-right space-x-2">
-                      <button
-                        onClick={() => handleEdit(tenant)}
-                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px]"
-                      >
-                        แก้ไข
-                      </button>
-                      <button
-                        onClick={() => handleDelete(tenant.id)}
-                        className="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[11px]"
-                      >
-                        ลบ
-                      </button>
-                    </td>
-                  </tr>
+        {/* ฟอร์มเพิ่มผู้เช่า */}
+        <form onSubmit={handleAddTenant} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-8 space-y-4">
+          <h2 className="text-lg font-semibold">👤 ทำสัญญา / เพิ่มผู้เช่าใหม่</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">ชื่อ-นามสกุล</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">เบอร์โทรศัพท์</label>
+              <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">เลือกห้องพัก</label>
+              <select value={roomNumber} onChange={e => setRoomNumber(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm">
+                <option value="">-- เลือกห้องพัก --</option>
+                {rooms.map(r => (
+                  <option key={r.id} value={r.roomNumber}>ห้อง {r.roomNumber} ({r.status === 'vacant' ? 'ว่าง' : 'มีผู้เช่า'})</option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">วันที่เริ่มเข้าอยู่</label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm" />
+            </div>
           </div>
-        </main>
-      </div>
+          <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm px-6 py-2 rounded-xl">บันทึกผู้เช่า</button>
+        </form>
 
-      <TenantModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveTenant}
-        initialData={editingTenant}
-      />
+        {/* รายชื่อผู้เช่า */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <h2 className="text-lg font-semibold mb-4">📋 รายชื่อผู้เช่าปัจจุบัน</h2>
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-800 text-slate-400">
+              <tr>
+                <th className="p-3 rounded-l-xl">ห้อง</th>
+                <th className="p-3">ชื่อผู้เช่า</th>
+                <th className="p-3">เบอร์โทร</th>
+                <th className="p-3">วันเริ่มสัญญา</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {tenants.map(t => (
+                <tr key={t.id}>
+                  <td className="p-3 font-semibold text-blue-400">ห้อง {t.roomNumber}</td>
+                  <td className="p-3 font-medium">{t.name}</td>
+                  <td className="p-3 text-slate-400">{t.phone}</td>
+                  <td className="p-3 text-slate-400">{t.startDate}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
     </div>
   );
 }
