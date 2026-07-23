@@ -98,9 +98,3 @@ const handlePrintDirect = (bill: any) => {
     }, 250);
   }
 };
-<button
-  onClick={() => handlePrintDirect(bill)}
-  className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium transition-colors"
->
-  🖨️ พิมพ์
-</button>
