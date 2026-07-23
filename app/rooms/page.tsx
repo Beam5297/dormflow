@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { getRooms, saveRooms, RoomData } from '@/services/roomService';
+import { supabase } from '@/services/supabase';
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<RoomData[]>([]);
@@ -18,6 +19,24 @@ export default function RoomsPage() {
 
   useEffect(() => {
     loadData();
+
+    // ตั้งค่าดักฟังการเปลี่ยนแปลงข้อมูลจาก Supabase แบบเรียลไทม์
+    const channel = supabase
+      .channel('realtime-rooms')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rooms' },
+        (payload) => {
+          console.log('Change received!', payload);
+          loadData(); // โหลดข้อมูลใหม่ทันทีที่มีการเปลี่ยนแปลง
+        }
+      )
+      .subscribe();
+
+    // เคลียร์การเชื่อมต่อเมื่อปิดหน้าเว็บ
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleAddRoom = async (e: React.FormEvent) => {
