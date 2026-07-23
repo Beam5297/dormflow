@@ -10,7 +10,7 @@ export default function BillsPage() {
   const [settings, setSettings] = useState<any>({});
 
   const [selectedRoom, setSelectedRoom] = useState('');
-  const [month, setMonth] = useState('มีนาคม 2026');
+  const [month, setMonth] = useState('กรกฎาคม 2026');
   const [waterOld, setWaterOld] = useState(0);
   const [waterNew, setWaterNew] = useState(0);
   const [electricOld, setElectricOld] = useState(0);
@@ -60,14 +60,33 @@ export default function BillsPage() {
     alert('บันทึกใบแจ้งหนี้เรียบร้อยแล้ว!');
   };
 
-  // ฟังก์ชันพิมพ์ใบแจ้งหนี้ + แสดง QR Code พร้อมสแกนจ่าย
+  // ฟังก์ชันส่งใบแจ้งหนี้เข้า LINE
+  const handleSendLine = (bill: BillData) => {
+    const text = `🏢 *ใบแจ้งค่าเช่าห้อง ${bill.roomNumber} (${settings.dormName})*
+ประจำเดือน: ${bill.month}
+คุณ: ${bill.tenantName}
+
+ค่าห้อง: ฿${bill.rentPrice.toLocaleString()}
+ค่าไฟ: ฿${((bill.electricNew - bill.electricOld) * bill.electricPricePerUnit).toLocaleString()}
+ค่าน้ำ: ฿${((bill.waterNew - bill.waterOld) * bill.waterPricePerUnit).toLocaleString()}
+ส่วนกลาง: ฿${bill.otherPrice.toLocaleString()}
+
+*ยอดรวมสุทธิ: ฿${bill.totalPrice.toLocaleString()}*
+
+โอนชำระได้ที่:
+${settings.bankName} ${settings.accountNo} (${settings.accountName})
+พร้อมเพย์: ${settings.promptPay}`;
+
+    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+    window.open(lineUrl, '_blank');
+  };
+
+  // ฟังก์ชันพิมพ์ใบเสร็จ (handlePrintDirect)
   const handlePrintDirect = (bill: BillData) => {
     const wUnits = Math.max(0, bill.waterNew - bill.waterOld);
     const wTotal = wUnits * bill.waterPricePerUnit;
     const eUnits = Math.max(0, bill.electricNew - bill.electricOld);
     const eTotal = eUnits * bill.electricPricePerUnit;
-
-    // URL PromptPay QR Code อัตโนมัติ
     const qrPromptpayUrl = settings.promptPay 
       ? `https://promptpay.io/${settings.promptPay.replace(/-/g, '')}/${bill.totalPrice}.png` 
       : '';
@@ -107,12 +126,10 @@ export default function BillsPage() {
               </div>
               <div><h2>- ใบแจ้งค่าเช่า -</h2></div>
             </div>
-
             <div class="info">
               <span><strong>ชื่อผู้เช่า:</strong> ${bill.tenantName} | <strong>ห้อง:</strong> ${bill.roomNumber}</span>
               <span><strong>ประจำเดือน:</strong> ${bill.month}</span>
             </div>
-
             <table>
               <thead>
                 <tr>
@@ -154,23 +171,19 @@ export default function BillsPage() {
                 </tr>
               </tbody>
             </table>
-
             <div class="payment-section">
               <div>
                 <p style="margin: 0 0 4px 0; font-weight: bold;">ช่องทางการชำระเงิน:</p>
                 <p style="margin: 0; font-size: 11px;">ธนาคาร: ${settings.bankName}</p>
                 <p style="margin: 0; font-size: 11px;">เลขบัญชี: <strong>${settings.accountNo}</strong></p>
                 <p style="margin: 0; font-size: 11px;">ชื่อบัญชี: ${settings.accountName}</p>
-                <p style="margin: 6px 0 0 0; font-size: 10px; color: red;">* ชำระภายในวันที่ 5 ของเดือน</p>
               </div>
-
               ${qrPromptpayUrl ? `
                 <div class="qr-code">
                   <img src="${qrPromptpayUrl}" alt="PromptPay QR Code">
                   <p style="margin: 2px 0 0 0; font-size: 9px;">สแกนเพื่อจ่าย ฿${bill.totalPrice.toLocaleString()}</p>
                 </div>
               ` : ''}
-
               <div style="text-align: right;">
                 <span style="font-size: 14px; font-weight: bold;">รวมทั้งสิ้น: ฿${bill.totalPrice.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
               </div>
@@ -200,7 +213,6 @@ export default function BillsPage() {
 
         <form onSubmit={handleCreateBill} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-8 space-y-4">
           <h2 className="text-lg font-semibold border-b border-slate-800 pb-3">📝 จดมิเตอร์ประจำเดือน</h2>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-slate-400 mb-1">เลือกห้องพัก</label>
@@ -280,12 +292,18 @@ export default function BillsPage() {
                     <td className="p-3">{bill.tenantName}</td>
                     <td className="p-3 text-slate-400">{bill.month}</td>
                     <td className="p-3 text-right font-bold text-emerald-400">฿{bill.totalPrice.toLocaleString()}</td>
-                    <td className="p-3 text-center">
+                    <td className="p-3 text-center space-x-2">
                       <button
                         onClick={() => handlePrintDirect(bill)}
                         className="bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg transition-colors"
                       >
-                        🖨️ พิมพ์ใบเสร็จ + QR
+                        🖨️ พิมพ์
+                      </button>
+                      <button
+                        onClick={() => handleSendLine(bill)}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-xs text-white px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        🟢 ส่ง LINE
                       </button>
                     </td>
                   </tr>
