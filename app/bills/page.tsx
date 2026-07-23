@@ -16,10 +16,17 @@ export default function BillsPage() {
   const [electricOld, setElectricOld] = useState(0);
   const [electricNew, setElectricNew] = useState(0);
 
+  const loadData = async () => {
+    const s = await getSettings();
+    const r = await getRooms();
+    const b = await getBills();
+    setSettings(s);
+    setRooms(r);
+    setBills(b);
+  };
+
   useEffect(() => {
-    setSettings(getSettings());
-    setRooms(getRooms());
-    setBills(getBills());
+    loadData();
   }, []);
 
   const waterUnits = Math.max(0, waterNew - waterOld);
@@ -33,7 +40,7 @@ export default function BillsPage() {
   const commonFee = settings.commonFee || 0;
   const grandTotal = rentPrice + waterTotal + electricTotal + commonFee;
 
-  const handleCreateBill = (e: React.FormEvent) => {
+  const handleCreateBill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRoom) return alert('กรุณาเลือกห้องพัก');
 
@@ -56,11 +63,10 @@ export default function BillsPage() {
 
     const updatedBills = [newBill, ...bills];
     setBills(updatedBills);
-    saveBills(updatedBills);
-    alert('บันทึกใบแจ้งหนี้เรียบร้อยแล้ว!');
+    await saveBills(updatedBills);
+    alert('บันทึกใบแจ้งหนี้ขึ้นระบบ Supabase เรียบร้อยแล้ว!');
   };
 
-  // ฟังก์ชันก๊อปปี้ข้อความส่ง LINE แบบไม่เด้งหน้า Login 
   const handleSendLine = (bill: BillData) => {
     const text = `🏢 *ใบแจ้งค่าเช่าห้อง ${bill.roomNumber} (${settings.dormName})*
 ประจำเดือน: ${bill.month}
@@ -81,7 +87,6 @@ ${settings.bankName} ${settings.accountNo} (${settings.accountName})
     alert('📋 คัดลอกข้อความใบแจ้งหนี้เรียบร้อยแล้ว!\nนำไปเปิดแอป LINE แล้วกด "วาง" (Paste) ส่งให้ผู้เช่าได้ทันทีครับ');
   };
 
-  // ฟังก์ชันพิมพ์ใบแจ้งหนี้ + QR Code
   const handlePrintDirect = (bill: BillData) => {
     const wUnits = Math.max(0, bill.waterNew - bill.waterOld);
     const wTotal = wUnits * bill.waterPricePerUnit;
