@@ -1,17 +1,32 @@
-export interface Room {
+import { supabase } from './supabase';
+
+export interface RoomData {
   id: string;
   roomNumber: string;
-  building: string;
-  floor: number;
-  price: number;
-  status: 'VACANT' | 'OCCUPIED' | 'MAINTENANCE';
+  rentPrice: number;
+  status: string;
+  tenantName: string;
 }
 
-export const mockRooms: Room[] = [
-  { id: '1', roomNumber: '101', building: 'อาคาร A', floor: 1, price: 3500, status: 'OCCUPIED' },
-  { id: '2', roomNumber: '102', building: 'อาคาร A', floor: 1, price: 3500, status: 'VACANT' },
-  { id: '3', roomNumber: '103', building: 'อาคาร A', floor: 1, price: 3500, status: 'OCCUPIED' },
-  { id: '4', roomNumber: '201', building: 'อาคาร A', floor: 2, price: 3800, status: 'MAINTENANCE' },
-  { id: '5', roomNumber: '202', building: 'อาคาร A', floor: 2, price: 3800, status: 'VACANT' },
-  { id: '6', roomNumber: 'B101', building: 'อาคาร B', floor: 1, price: 4200, status: 'OCCUPIED' },
-];
+export async function getRooms(): Promise<RoomData[]> {
+  const { data } = await supabase.from('rooms').select('*');
+  if (!data) return [];
+  return data.map((r: any) => ({
+    id: r.id,
+    roomNumber: r.room_number,
+    rentPrice: Number(r.rent_price),
+    status: r.status,
+    tenantName: r.tenant_name || '',
+  }));
+}
+
+export async function saveRooms(rooms: RoomData[]) {
+  const formatted = rooms.map(r => ({
+    id: r.id,
+    room_number: r.roomNumber,
+    rent_price: r.rentPrice,
+    status: r.status,
+    tenant_name: r.tenantName,
+  }));
+  await supabase.from('rooms').upsert(formatted);
+}
