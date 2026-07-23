@@ -60,7 +60,7 @@ export default function BillsPage() {
     alert('บันทึกใบแจ้งหนี้เรียบร้อยแล้ว!');
   };
 
-  // ฟังก์ชันส่งใบแจ้งหนี้เข้า LINE
+  // ฟังก์ชันก๊อปปี้ข้อความสำหรับส่ง LINE (แก้อาการ 400 Bad Request ชัวร์ 100%)
   const handleSendLine = (bill: BillData) => {
     const text = `🏢 *ใบแจ้งค่าเช่าห้อง ${bill.roomNumber} (${settings.dormName})*
 ประจำเดือน: ${bill.month}
@@ -77,11 +77,11 @@ export default function BillsPage() {
 ${settings.bankName} ${settings.accountNo} (${settings.accountName})
 พร้อมเพย์: ${settings.promptPay}`;
 
-    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
-    window.open(lineUrl, '_blank');
+    navigator.clipboard.writeText(text);
+    alert('📋 คัดลอกข้อความใบแจ้งหนี้เรียบร้อยแล้ว!\nนำไปกด "วาง" (Paste) ในแชท LINE ผู้เช่าได้เลยครับ');
   };
 
-  // ฟังก์ชันพิมพ์ใบเสร็จ (handlePrintDirect)
+  // ฟังก์ชันพิมพ์ใบแจ้งหนี้
   const handlePrintDirect = (bill: BillData) => {
     const wUnits = Math.max(0, bill.waterNew - bill.waterOld);
     const wTotal = wUnits * bill.waterPricePerUnit;
@@ -303,7 +303,7 @@ ${settings.bankName} ${settings.accountNo} (${settings.accountName})
                         onClick={() => handleSendLine(bill)}
                         className="bg-emerald-600 hover:bg-emerald-500 text-xs text-white px-3 py-1.5 rounded-lg transition-colors"
                       >
-                        🟢 ส่ง LINE
+                        🟢 ก๊อปปี้ส่ง LINE
                       </button>
                     </td>
                   </tr>
