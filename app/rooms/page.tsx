@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Sidebar } from '@/components/Sidebar';
+import  Sidebar  from '@/components/Sidebar';
 import { mockRooms, Room } from '@/services/roomService';
 import { RoomModal } from '@/components/RoomModal';
 
