@@ -60,7 +60,7 @@ export default function BillsPage() {
     alert('บันทึกใบแจ้งหนี้เรียบร้อยแล้ว!');
   };
 
-  // ฟังก์ชันก๊อปปี้ข้อความสำหรับส่ง LINE (แก้อาการ 400 Bad Request ชัวร์ 100%)
+  // ฟังก์ชันก๊อปปี้ข้อความส่ง LINE แบบไม่เด้งหน้า Login 
   const handleSendLine = (bill: BillData) => {
     const text = `🏢 *ใบแจ้งค่าเช่าห้อง ${bill.roomNumber} (${settings.dormName})*
 ประจำเดือน: ${bill.month}
@@ -78,10 +78,10 @@ ${settings.bankName} ${settings.accountNo} (${settings.accountName})
 พร้อมเพย์: ${settings.promptPay}`;
 
     navigator.clipboard.writeText(text);
-    alert('📋 คัดลอกข้อความใบแจ้งหนี้เรียบร้อยแล้ว!\nนำไปกด "วาง" (Paste) ในแชท LINE ผู้เช่าได้เลยครับ');
+    alert('📋 คัดลอกข้อความใบแจ้งหนี้เรียบร้อยแล้ว!\nนำไปเปิดแอป LINE แล้วกด "วาง" (Paste) ส่งให้ผู้เช่าได้ทันทีครับ');
   };
 
-  // ฟังก์ชันพิมพ์ใบแจ้งหนี้
+  // ฟังก์ชันพิมพ์ใบแจ้งหนี้ + QR Code
   const handlePrintDirect = (bill: BillData) => {
     const wUnits = Math.max(0, bill.waterNew - bill.waterOld);
     const wTotal = wUnits * bill.waterPricePerUnit;
