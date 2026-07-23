@@ -1,111 +1,93 @@
 'use client';
 
-import React, { useState } from 'react';
-import  Sidebar  from '@/components/Sidebar';
-import { mockPayments, PaymentRecord } from '@/services/paymentService';
-import { PaymentModal } from '@/components/PaymentModal';
+import React, { useState, useEffect } from 'react';
+import Sidebar from '@/components/Sidebar';
+import { getBills, saveBills, BillData } from '@/services/storage';
 
 export default function PaymentsPage() {
-  const [payments, setPayments] = useState<PaymentRecord[]>(mockPayments);
-  const [search, setSearch] = useState('');
-  const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [bills, setBills] = useState<BillData[]>([]);
 
-  const filteredPayments = payments.filter((p) =>
-    p.roomNumber.toLowerCase().includes(search.toLowerCase()) ||
-    p.tenantName.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    setBills(getBills());
+  }, []);
 
-  const handleConfirmPayment = (paymentId: string) => {
-    setPayments(
-      payments.map((p) =>
-        p.id === paymentId
-          ? { ...p, status: 'VERIFIED', paidAt: new Date().toLocaleString('th-TH') }
-          : p
-      )
-    );
-  };
+  // ฟังก์ชันเปลี่ยนสถานะชำระเงิน
+  const togglePaymentStatus = (id: string) => {
+    const updated = bills.map(bill => {
+      if (bill.id === id) {
+        const newStatus: 'paid' | 'pending' = bill.status === 'paid' ? 'pending' : 'paid';
+        return { ...bill, status: newStatus };
+      }
+      return bill;
+    });
 
-  const renderBadge = (status: string) => {
-    if (status === 'VERIFIED')
-      return <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ชำระแล้ว</span>;
-    if (status === 'PENDING')
-      return <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">รอตรวจสอบ</span>;
-    return <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">ปฏิเสธ</span>;
+    setBills(updated);
+    saveBills(updated);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex">
+    <div className="flex min-h-screen bg-slate-950 text-white">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-20">
-          <h2 className="text-base font-semibold text-slate-200">รับชำระเงิน & ตรวจสลิป</h2>
-        </header>
 
-        <main className="p-6 space-y-4">
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-            <input
-              type="text"
-              placeholder="ค้นหาเลขห้อง, ชื่อผู้เช่า..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-blue-500 w-full sm:w-60"
-            />
-          </div>
+      <main className="flex-1 p-8 max-w-6xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">ระบบตรวจสอบการชำระเงิน (Payments)</h1>
+          <p className="text-slate-400 text-sm">ตรวจเช็กการโอนเงินและยืนยันรับชำระค่าเช่าประจำเดือน</p>
+        </div>
 
-          <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/80 text-slate-400 uppercase border-b border-slate-800">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-800 text-slate-400">
                 <tr>
-                  <th className="px-5 py-3.5">ห้อง</th>
-                  <th className="px-5 py-3.5">ผู้เช่า</th>
-                  <th className="px-5 py-3.5">ยอดชำระ</th>
-                  <th className="px-5 py-3.5">ช่องทาง</th>
-                  <th className="px-5 py-3.5">เวลาชำระเงิน</th>
-                  <th className="px-5 py-3.5">สถานะ</th>
-                  <th className="px-5 py-3.5 text-right">ดำเนินการ</th>
+                  <th className="p-3 rounded-l-xl">ห้อง</th>
+                  <th className="p-3">ชื่อผู้เช่า</th>
+                  <th className="p-3">ประจำเดือน</th>
+                  <th className="p-3 text-right">ยอดที่ต้องชำระ</th>
+                  <th className="p-3 text-center">สถานะ</th>
+                  <th className="p-3 text-center">จัดการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {filteredPayments.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-800/40">
-                    <td className="px-5 py-3.5 font-bold text-blue-400">ห้อง {p.roomNumber}</td>
-                    <td className="px-5 py-3.5 font-medium text-slate-100">{p.tenantName}</td>
-                    <td className="px-5 py-3.5 font-bold text-slate-100">฿{p.amount.toLocaleString()}</td>
-                    <td className="px-5 py-3.5 text-slate-400">
-                      {p.paymentMethod === 'PROMPTPAY' ? '📱 PromptPay' : '💵 เงินสด'}
+              <tbody className="divide-y divide-slate-800">
+                {bills.map((bill) => (
+                  <tr key={bill.id}>
+                    <td className="p-3 font-semibold text-blue-400">ห้อง {bill.roomNumber}</td>
+                    <td className="p-3 font-medium">{bill.tenantName}</td>
+                    <td className="p-3 text-slate-400">{bill.month}</td>
+                    <td className="p-3 text-right font-bold text-white">฿{bill.totalPrice.toLocaleString()}</td>
+                    <td className="p-3 text-center">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                        bill.status === 'paid' 
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      }`}>
+                        {bill.status === 'paid' ? '✓ ชำระเงินแล้ว' : '⏳ รอชำระเงิน'}
+                      </span>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-400">{p.paidAt || 'ยังไม่ได้ชำระ'}</td>
-                    <td className="px-5 py-3.5">{renderBadge(p.status)}</td>
-                    <td className="px-5 py-3.5 text-right">
-                      {p.status === 'PENDING' ? (
-                        <button
-                          onClick={() => {
-                            setSelectedPayment(p);
-                            setIsModalOpen(true);
-                          }}
-                          className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] shadow-sm shadow-emerald-600/20"
-                        >
-                          รับชำระ / ตรวจสลิป
-                        </button>
-                      ) : (
-                        <span className="text-[11px] text-slate-500 font-medium">✓ เสร็จสิ้น</span>
-                      )}
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => togglePaymentStatus(bill.id)}
+                        className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                          bill.status === 'paid'
+                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                            : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-600/20'
+                        }`}
+                      >
+                        {bill.status === 'paid' ? 'ยกเลิกการชำระ' : 'ยืนยันรับชำระเงิน'}
+                      </button>
                     </td>
                   </tr>
                 ))}
+                {bills.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center p-6 text-slate-500">ไม่มีรายการใบแจ้งหนี้ให้ตรวจสอบ</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
-        </main>
-      </div>
-
-      <PaymentModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onConfirm={handleConfirmPayment}
-        payment={selectedPayment}
-      />
+        </div>
+      </main>
     </div>
   );
 }

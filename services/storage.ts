@@ -16,7 +16,7 @@ export interface SettingsData {
 export interface RoomData {
   id: string;
   roomNumber: string;
-  status: 'vacant' | 'occupied' | 'maintenance'; // ว่าง / มีผู้เช่า / ปรับปรุง
+  status: 'vacant' | 'occupied' | 'maintenance';
   rentPrice: number;
   tenantName?: string;
 }
@@ -46,7 +46,6 @@ export interface BillData {
   status: 'paid' | 'pending';
 }
 
-// ค่าเริ่มต้นถ้าระบบยังไม่มีข้อมูล
 const DEFAULT_SETTINGS: SettingsData = {
   dormName: 'BAN (DormFlow)',
   phone: '089-605-0124',

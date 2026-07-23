@@ -9,7 +9,6 @@ export default function BillsPage() {
   const [rooms, setRooms] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
 
-  // Form State
   const [selectedRoom, setSelectedRoom] = useState('');
   const [month, setMonth] = useState('มีนาคม 2026');
   const [waterOld, setWaterOld] = useState(0);
@@ -23,7 +22,6 @@ export default function BillsPage() {
     setBills(getBills());
   }, []);
 
-  // คำนวณเงินอัตโนมัติจากราคาใน Settings
   const waterUnits = Math.max(0, waterNew - waterOld);
   const waterTotal = waterUnits * (settings.waterRate || 0);
 
@@ -35,7 +33,6 @@ export default function BillsPage() {
   const commonFee = settings.commonFee || 0;
   const grandTotal = rentPrice + waterTotal + electricTotal + commonFee;
 
-  // ฟังก์ชันสร้างบิล
   const handleCreateBill = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRoom) return alert('กรุณาเลือกห้องพัก');
@@ -63,12 +60,17 @@ export default function BillsPage() {
     alert('บันทึกใบแจ้งหนี้เรียบร้อยแล้ว!');
   };
 
-  // ฟังก์ชันสั่งพิมพ์
+  // ฟังก์ชันพิมพ์ใบแจ้งหนี้ + แสดง QR Code พร้อมสแกนจ่าย
   const handlePrintDirect = (bill: BillData) => {
     const wUnits = Math.max(0, bill.waterNew - bill.waterOld);
     const wTotal = wUnits * bill.waterPricePerUnit;
     const eUnits = Math.max(0, bill.electricNew - bill.electricOld);
     const eTotal = eUnits * bill.electricPricePerUnit;
+
+    // URL PromptPay QR Code อัตโนมัติ
+    const qrPromptpayUrl = settings.promptPay 
+      ? `https://promptpay.io/${settings.promptPay.replace(/-/g, '')}/${bill.totalPrice}.png` 
+      : '';
 
     const printContent = `
       <!DOCTYPE html>
@@ -79,18 +81,20 @@ export default function BillsPage() {
           <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
           <style>
             @page { size: auto; margin: 0; }
-            body { font-family: 'Sarabun', sans-serif; padding: 20px; font-size: 13px; color: #000; }
-            .bill-box { border: 2px solid #000; padding: 20px; max-width: 650px; margin: 0 auto; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
-            .header h1 { margin: 0; font-size: 20px; }
-            .header h2 { margin: 0; font-size: 18px; }
-            .info { display: flex; justify-content: space-between; margin-bottom: 12px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-            th, td { padding: 6px; text-align: left; }
+            body { font-family: 'Sarabun', sans-serif; padding: 20px; font-size: 12px; color: #000; }
+            .bill-box { border: 2px solid #000; padding: 18px; max-width: 650px; margin: 0 auto; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+            .header h1 { margin: 0; font-size: 18px; }
+            .header h2 { margin: 0; font-size: 16px; }
+            .info { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+            th, td { padding: 5px; text-align: left; }
             th { border-top: 1px solid #000; border-bottom: 1px solid #000; }
             .text-right { text-align: right; }
             .text-center { text-align: center; }
-            .footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #000; padding-top: 8px; font-weight: bold; }
+            .payment-section { display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #000; padding-top: 10px; margin-top: 10px; }
+            .qr-code { text-align: center; }
+            .qr-code img { width: 110px; height: 110px; border: 1px solid #ccc; padding: 3px; }
           </style>
         </head>
         <body>
@@ -98,19 +102,21 @@ export default function BillsPage() {
             <div class="header">
               <div>
                 <h1>${settings.dormName || 'BAN (DormFlow)'}</h1>
-                <p style="margin: 2px 0 0 0; font-size: 11px;">${settings.address}</p>
-                <p style="margin: 0; font-size: 11px;">โทรศัพท์: ${settings.phone}</p>
+                <p style="margin: 2px 0 0 0; font-size: 10px;">${settings.address}</p>
+                <p style="margin: 0; font-size: 10px;">โทรศัพท์: ${settings.phone}</p>
               </div>
               <div><h2>- ใบแจ้งค่าเช่า -</h2></div>
             </div>
+
             <div class="info">
               <span><strong>ชื่อผู้เช่า:</strong> ${bill.tenantName} | <strong>ห้อง:</strong> ${bill.roomNumber}</span>
               <span><strong>ประจำเดือน:</strong> ${bill.month}</span>
             </div>
+
             <table>
               <thead>
                 <tr>
-                  <th class="text-center" style="width: 40px;">ลำดับ</th>
+                  <th class="text-center" style="width: 35px;">ลำดับ</th>
                   <th>รายการ</th>
                   <th class="text-right">หน่วย</th>
                   <th class="text-right">ราคา/หน่วย</th>
@@ -148,9 +154,26 @@ export default function BillsPage() {
                 </tr>
               </tbody>
             </table>
-            <div class="footer">
-              <span style="font-size: 11px; font-weight: normal;">ชำระภายในวันที่ 5 | ${settings.bankName} ${settings.accountNo} ${settings.accountName}</span>
-              <span>รวมทั้งสิ้น: ฿${bill.totalPrice.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+
+            <div class="payment-section">
+              <div>
+                <p style="margin: 0 0 4px 0; font-weight: bold;">ช่องทางการชำระเงิน:</p>
+                <p style="margin: 0; font-size: 11px;">ธนาคาร: ${settings.bankName}</p>
+                <p style="margin: 0; font-size: 11px;">เลขบัญชี: <strong>${settings.accountNo}</strong></p>
+                <p style="margin: 0; font-size: 11px;">ชื่อบัญชี: ${settings.accountName}</p>
+                <p style="margin: 6px 0 0 0; font-size: 10px; color: red;">* ชำระภายในวันที่ 5 ของเดือน</p>
+              </div>
+
+              ${qrPromptpayUrl ? `
+                <div class="qr-code">
+                  <img src="${qrPromptpayUrl}" alt="PromptPay QR Code">
+                  <p style="margin: 2px 0 0 0; font-size: 9px;">สแกนเพื่อจ่าย ฿${bill.totalPrice.toLocaleString()}</p>
+                </div>
+              ` : ''}
+
+              <div style="text-align: right;">
+                <span style="font-size: 14px; font-weight: bold;">รวมทั้งสิ้น: ฿${bill.totalPrice.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+              </div>
             </div>
           </div>
         </body>
@@ -175,18 +198,13 @@ export default function BillsPage() {
       <main className="flex-1 p-8 max-w-6xl">
         <h1 className="text-2xl font-bold mb-6">คำนวณมิเตอร์ & ออกใบแจ้งหนี้ (Bills)</h1>
 
-        {/* ฟอร์มคำนวณเงิน */}
         <form onSubmit={handleCreateBill} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-8 space-y-4">
           <h2 className="text-lg font-semibold border-b border-slate-800 pb-3">📝 จดมิเตอร์ประจำเดือน</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-slate-400 mb-1">เลือกห้องพัก</label>
-              <select 
-                value={selectedRoom} 
-                onChange={(e) => setSelectedRoom(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
-              >
+              <select value={selectedRoom} onChange={(e) => setSelectedRoom(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
                 <option value="">-- เลือกห้องพัก --</option>
                 {rooms.map(r => (
                   <option key={r.id} value={r.roomNumber}>ห้อง {r.roomNumber} ({r.tenantName || 'ไม่มีผู้เช่า'})</option>
@@ -200,7 +218,6 @@ export default function BillsPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            {/* มิเตอร์น้ำ */}
             <div className="bg-slate-800/50 p-4 rounded-xl space-y-3 border border-slate-700/50">
               <span className="text-sm font-semibold text-blue-400">💧 ค่าน้ำประปา (อัตรา {settings.waterRate} บาท/หน่วย)</span>
               <div className="grid grid-cols-2 gap-2">
@@ -216,7 +233,6 @@ export default function BillsPage() {
               <div className="text-xs text-slate-300 text-right">ใช้ไป {waterUnits} หน่วย = <span className="font-bold text-white">{waterTotal.toLocaleString()} บาท</span></div>
             </div>
 
-            {/* มิเตอร์ไฟ */}
             <div className="bg-slate-800/50 p-4 rounded-xl space-y-3 border border-slate-700/50">
               <span className="text-sm font-semibold text-amber-400">⚡ ค่าไฟฟ้า (อัตรา {settings.electricRate} บาท/หน่วย)</span>
               <div className="grid grid-cols-2 gap-2">
@@ -233,7 +249,6 @@ export default function BillsPage() {
             </div>
           </div>
 
-          {/* ยอดรวมสุทธิ */}
           <div className="flex justify-between items-center bg-blue-950/40 border border-blue-500/20 p-4 rounded-xl">
             <div>
               <span className="text-xs text-slate-400">ยอดรวมทั้งหมด (รวมค่าห้อง {rentPrice.toLocaleString()} + ส่วนกลาง {commonFee.toLocaleString()})</span>
@@ -245,7 +260,6 @@ export default function BillsPage() {
           </div>
         </form>
 
-        {/* ตารางแสดงรายการใบแจ้งหนี้ที่ออกแล้ว */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
           <h2 className="text-lg font-semibold mb-4">📄 รายการใบแจ้งหนี้ล่าสุด</h2>
           <div className="overflow-x-auto">
@@ -271,16 +285,11 @@ export default function BillsPage() {
                         onClick={() => handlePrintDirect(bill)}
                         className="bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg transition-colors"
                       >
-                        🖨️ พิมพ์ใบเสร็จ
+                        🖨️ พิมพ์ใบเสร็จ + QR
                       </button>
                     </td>
                   </tr>
                 ))}
-                {bills.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="text-center p-6 text-slate-500">ยังไม่มีรายการใบแจ้งหนี้</td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
